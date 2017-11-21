@@ -83,6 +83,7 @@ do_populate() {
 
 addtask populate before do_build after do_unpack
 do_populate[deptask] = "do_deploy_deb"
+do_populate[depends] = "buildchroot:do_cleanup"
 
 do_rootfs[stamp-extra-info] = "${MACHINE}-${DISTRO}"
 

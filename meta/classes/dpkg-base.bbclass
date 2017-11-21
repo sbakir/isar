@@ -2,7 +2,7 @@
 # Copyright (C) 2017 Siemens AG
 
 # Add dependency from buildchroot creation
-do_build[depends] = "buildchroot:do_build"
+do_build[depends] = "buildchroot:do_prepare"
 
 # Each package should have its own unique build folder, so use
 # recipe name as identifier
@@ -24,6 +24,7 @@ do_build() {
         ret=$?
         sudo umount ${BUILDROOT} 2>/dev/null || true
         sudo rmdir ${BUILDROOT} 2>/dev/null || true
+        (exit $ret) || sudo umount ${BUILDCHROOT_DIR}/git
         (exit $ret) || bb_exit_handler
     }
     trap '_do_build_cleanup' EXIT
