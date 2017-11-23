@@ -18,12 +18,24 @@ dpkg_runbuild() {
 
 # Wrap the function dpkg_runbuild with the bind mount for buildroot
 do_build() {
+    if [ -d ${WORKDIR}/git/.git ]; then
+        OBJ_PATH=$(cat ${WORKDIR}/git/.git/objects/info/alternates)
+        REPO_PATH=$(dirname $OBJ_PATH)
+        REPO_NAME=$(basename $REPO_PATH)
+        echo "/git/$REPO_NAME/objects" > ${WORKDIR}/git/.git/objects/info/alternates
+    fi
+
     mkdir -p ${BUILDROOT}
     sudo mount --bind ${WORKDIR} ${BUILDROOT}
     _do_build_cleanup() {
         ret=$?
         sudo umount ${BUILDROOT} 2>/dev/null || true
         sudo rmdir ${BUILDROOT} 2>/dev/null || true
+
+        if [ -d ${WORKDIR}/git/.git ]; then
+            echo $OBJ_PATH > ${WORKDIR}/git/.git/objects/info/alternates
+        fi
+
         (exit $ret) || sudo umount ${BUILDCHROOT_DIR}/git
         (exit $ret) || bb_exit_handler
     }
