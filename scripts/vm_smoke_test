@@ -12,7 +12,7 @@ CONSOLE_OUTPUT=$TESTDIR/isar_console
 PID_FILE=$TESTDIR/qemu_pid
 
 DEBUG=1
-VM_TIMEOUT=60
+VM_TIMEOUT=120
 MATCH_STR="isar login: "
 
 RC_PASS=0               # Test executed and passed
