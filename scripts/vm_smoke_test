@@ -1,20 +1,50 @@
-#!/bin/sh
+#!/bin/bash
 #
 # This software is a part of ISAR.
 # Copyright (C) 2015-2017 ilbers GmbH
+#
+# TODO
+# - bash required due to $LINENO, not supported by dash 0.5.7-4+b1.
 
 TMPDIR=tmp
 TESTDIR=$TMPDIR/test
 CONSOLE_OUTPUT=$TESTDIR/isar_console
+PID_FILE=$TESTDIR/qemu_pid
 
 DEBUG=1
-VM_TIMEOUT=30
+VM_TIMEOUT=60
 MATCH_STR="isar login: "
 
 RC_PASS=0               # Test executed and passed
 RC_FAIL=1               # Test executed and failed
 RC_KFAIL=2              # Known failure
 RC_UNRESOLVED=3         # Something is wrong with the test environment
+
+dbg() {
+    [ "$DEBUG" = 1 ] && echo "$0: DEBUG: $*" >&2
+}
+
+err() {
+    echo "$0: ERROR: $*">&2
+}
+
+kill_qemu() {
+    pid_file="$1"
+
+    dbg "kill_qemu $pid_file"
+    # If we have been called, start_vm has still not exited; pid file must
+    # exist
+    if [ ! -f "$pid_file" ]; then
+	err "$PID_FILE.$svm_pid doesn't exist"
+    else
+	qemu_pid=`cat $pid_file`
+	# QEMU must be still running, show errors, if any
+	kill $qemu_pid
+	dbg "kill $qemu_pid: $?"
+    fi
+    # Visual sanity check (may show others' processes)
+    [ "$DEBUG" = 1 ] && ps ax |grep qemu- |grep -v grep
+}
 
 # svm exited  outf exists  timeout passed  str matches  result      kill qemu
 #     0            0             1             N/A      UNRESOLVED  yes
@@ -25,25 +55,47 @@ check_output() {
     svm_pid=$1
     outf="$2.$svm_pid"
 
+    dbg "check_output $*"
     i=0
     while [ $i -lt $VM_TIMEOUT ]; do
 	# start_vm should wait at login prompt; if it exits, something is wrong
 	# with the test environment
-	kill -0 $svm_pid >/dev/null 2>&1 || return $RC_UNRESOLVED
+	# kill may fail if start_vm has already exited, suppress output
+	if ! kill -0 $svm_pid >/dev/null 2>&1; then
+	    # start_vm and, consequently, QEMU has exited, not killing QEMU
+	    dbg "UNRESOLVED $LINENO: svm exited 1, waited $i"
+	    return $RC_UNRESOLVED
+	fi
 	if [ -f "$outf" ]; then
-	    str=`tail -1 "$outf"`
-	    [ "$str" = "$MATCH_STR" ] && return $RC_PASS
+	    str=`tail -1 "$outf" |tr -d '\r'`
+	    if [ "$str" = "$MATCH_STR" ]; then
+		kill_qemu "$PID_FILE.$svm_pid"
+		dbg "PASS $LINENO: svm exited 0, $outf exists 1, waited $i," \
+		    "\"$str\" matches 1"
+		return $RC_PASS
+	    fi
 	fi
 	i=$((i+1))
 	sleep 1
     done
-    # Kill start_vm, as QEMU pid might not have been created at all
-    kill $svm_pid
+
     # If QEMU starts, the output file must exist; if it doesn't, something is
     # wrong with the test environment
-    [ -f "$outf" ] || return $RC_UNRESOLVED
-    str=`tail -1 "$outf"`
-    [ "$str" = "$MATCH_STR" ] && return $RC_PASS
+    if [ ! -f "$outf" ]; then
+	kill_qemu "$PID_FILE.$svm_pid"
+	dbg "UNRESOLVED $LINENO: svm exited 0, $outf exists 0, waited $i"
+	return $RC_UNRESOLVED
+    fi
+    str=`tail -1 "$outf" |tr -d '\r'`
+    if [ "$str" = "$MATCH_STR" ]; then
+	kill_qemu "$PID_FILE.$svm_pid"
+	dbg "PASS $LINENO: svm exited 0, $outf exists 1, waited $i," \
+	    "\"$str\" matches 1"
+	return $RC_PASS
+    fi
+    kill_qemu "$PID_FILE.$svm_pid"
+    dbg "FAIL $LINENO: svm exited 0, $outf exists 1, waited $i," \
+	"\"$str\" matches 0"
     return $RC_FAIL
 }
 
@@ -55,7 +107,8 @@ run_test () {
     echo "Testing Isar [$DISTRO] image for [$ARCH] machine:"
 
     # Start QEMU with Isar image
-    start_vm -a $ARCH -d $DISTRO -op $CONSOLE_OUTPUT >/dev/null 2>&1 &
+    start_vm -a $ARCH -d $DISTRO -op $CONSOLE_OUTPUT -pp $PID_FILE \
+	>/dev/null 2>&1 &
     svm_pid=$!
 
     # Check output
@@ -80,7 +133,7 @@ run_test () {
     esac
 
     # Clean up test artifacts
-    #[ $DEBUG != 1 ] && rm -f "$CONSOLE_OUTPUT" "$outf" "$PID_FILE"
+    #[ "$DEBUG" != 1 ] && rm -f "$CONSOLE_OUTPUT" "$outf" "$PID_FILE"
 }
 
 # TODO: A better way to determine the bitbake build directory?

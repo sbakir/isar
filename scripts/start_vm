@@ -65,6 +65,9 @@ show_help() {
     echo "                          Route QEMU console output to TEMPLATE.PID,"
     echo "                          where PID is the pid of start_vm"
     echo "    -p, --pid FILE        Store QEMU pid to file."
+    echo "    -pp, --pid-pid TEMPLATE"
+    echo "                          Store QEMU pid to TEMPLATE.PID,"
+    echo "                          where PID is the pid of start_vm"
     echo "    --help                display this message and exit."
     echo
     echo "Exit status:"
@@ -109,6 +112,10 @@ do
         ;;
     -p|--pid)
         EXTRA_ARGS="$EXTRA_ARGS -pidfile $2"
+        shift
+        ;;
+    -pp|--pid-pid)
+        EXTRA_ARGS="$EXTRA_ARGS -pidfile $2.$$"
         shift
         ;;
     *)
