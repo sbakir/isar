@@ -61,6 +61,9 @@ show_help() {
     echo "                          Supported: jessie, stretch."
     echo "    -o, --out FILE        Route QEMU console output to"
     echo "                          specified file."
+    echo "    -op, --out-pid TEMPLATE"
+    echo "                          Route QEMU console output to TEMPLATE.PID,"
+    echo "                          where PID is the pid of start_vm"
     echo "    -p, --pid FILE        Store QEMU pid to file."
     echo "    --help                display this message and exit."
     echo
@@ -98,6 +101,10 @@ do
         ;;
     -o|--out)
         EXTRA_ARGS="$EXTRA_ARGS -serial file:$2"
+        shift
+        ;;
+    -op|--out-pid)
+        EXTRA_ARGS="$EXTRA_ARGS -serial file:$2.$$"
         shift
         ;;
     -p|--pid)

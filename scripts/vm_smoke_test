@@ -3,17 +3,48 @@
 # This software is a part of ISAR.
 # Copyright (C) 2015-2017 ilbers GmbH
 
-CONSOLE_OUTPUT=/tmp/isar_console
-PID_FILE=/tmp/qemu.pid
+TMPDIR=tmp
+TESTDIR=$TMPDIR/test
+CONSOLE_OUTPUT=$TESTDIR/isar_console
 
+DEBUG=1
+VM_TIMEOUT=30
+MATCH_STR="isar login: "
+
+RC_PASS=0               # Test executed and passed
+RC_FAIL=1               # Test executed and failed
+RC_KFAIL=2              # Known failure
+RC_UNRESOLVED=3         # Something is wrong with the test environment
+
+# svm exited  outf exists  timeout passed  str matches  result      kill qemu
+#     0            0             1             N/A      UNRESOLVED  yes
+#     0            1             *              1       PASS        yes
+#     0            1             1              0       FAIL        yes
+#     1            *             *              *       UNRESOLVED  no
 check_output() {
-    str=$(tail -1 $CONSOLE_OUTPUT)
+    svm_pid=$1
+    outf="$2.$svm_pid"
 
-    if [ "$str" = "isar login: " ]; then
-        echo "Test: PASSED"
-    else
-        echo "Test: FAIL"
-    fi
+    i=0
+    while [ $i -lt $VM_TIMEOUT ]; do
+	# start_vm should wait at login prompt; if it exits, something is wrong
+	# with the test environment
+	kill -0 $svm_pid >/dev/null 2>&1 || return $RC_UNRESOLVED
+	if [ -f "$outf" ]; then
+	    str=`tail -1 "$outf"`
+	    [ "$str" = "$MATCH_STR" ] && return $RC_PASS
+	fi
+	i=$((i+1))
+	sleep 1
+    done
+    # Kill start_vm, as QEMU pid might not have been created at all
+    kill $svm_pid
+    # If QEMU starts, the output file must exist; if it doesn't, something is
+    # wrong with the test environment
+    [ -f "$outf" ] || return $RC_UNRESOLVED
+    str=`tail -1 "$outf"`
+    [ "$str" = "$MATCH_STR" ] && return $RC_PASS
+    return $RC_FAIL
 }
 
 run_test () {
@@ -24,17 +55,40 @@ run_test () {
     echo "Testing Isar [$DISTRO] image for [$ARCH] machine:"
 
     # Start QEMU with Isar image
-    start_vm -a $ARCH -d $DISTRO -o $CONSOLE_OUTPUT -p $PID_FILE > /dev/null 2>&1 &
-    sleep 30
-    kill `cat $PID_FILE`
+    start_vm -a $ARCH -d $DISTRO -op $CONSOLE_OUTPUT >/dev/null 2>&1 &
+    svm_pid=$!
 
     # Check output
-    check_output
+    check_output $svm_pid "$CONSOLE_OUTPUT"
+    ret=$?
+    case $ret in
+	$RC_PASS)
+	    echo "PASS" >&2
+	    ;;
+	$RC_FAIL)
+	    echo "FAIL" >&2
+	    ;;
+	$RC_KFAIL)
+	    echo "KFAIL" >&2
+	    ;;
+	$RC_UNRESOLVED)
+	    echo "UNRESOLVED" >&2
+	    ;;
+	*)
+	    echo "BUG: $ret" >&2
+	    ;;
+    esac
 
     # Clean up test artifacts
-    rm $CONSOLE_OUTPUT
-    rm $PID_FILE
+    #[ $DEBUG != 1 ] && rm -f "$CONSOLE_OUTPUT" "$outf" "$PID_FILE"
 }
+
+# TODO: A better way to determine the bitbake build directory?
+if [ ! -d "$TMPDIR" ]; then
+    echo "$0: ERROR: `readlink -f $TMPDIR` doesn't exist" >&2
+    exit $RC_UNRESOLVED
+fi
+mkdir -p "$TESTDIR"
 
 # ARM machine
 run_test arm wheezy
