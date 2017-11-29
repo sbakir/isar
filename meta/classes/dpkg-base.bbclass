@@ -36,6 +36,7 @@ do_build() {
             echo $OBJ_PATH > ${WORKDIR}/git/.git/objects/info/alternates
         fi
 
+        (exit $ret) || sudo umount ${BUILDCHROOT_DIR}/apt
         (exit $ret) || sudo umount ${BUILDCHROOT_DIR}/git
         (exit $ret) || bb_exit_handler
     }
