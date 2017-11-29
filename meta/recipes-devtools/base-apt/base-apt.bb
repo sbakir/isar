@@ -29,6 +29,7 @@ BASE_PREINSTALL ?= "gcc \
                     gdb \
                     strace \
                    "
+BASE_PREINSTALL += "${IMAGE_PREINSTALL}"
 
 BASE_CACHE_CONF_DIR = "${BASE_DIR_APT}/conf"
 do_base_cache[dirs] = "${BASE_CACHE_CONF_DIR}"
