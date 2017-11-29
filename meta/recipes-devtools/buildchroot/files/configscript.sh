@@ -45,4 +45,8 @@ mount -t devtmpfs -o mode=0755,nosuid devtmpfs /dev
 #configuring packages
 dpkg --configure -a
 
+# Point to local apt
+sed -i -e "s|\bcopy[^ ]*|file:/apt|g" /etc/apt/sources.list.d/multistrap-*.list
+apt-get update
+
 umount /dev

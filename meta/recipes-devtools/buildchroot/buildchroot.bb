@@ -58,6 +58,7 @@ do_build() {
     _do_build_cleanup() {
         ret=$?
         sudo umount ${BUILDCHROOT_DIR}/proc 2>/dev/null || true
+        sudo umount ${BUILDCHROOT_DIR}/apt || true
         (exit $ret) || bb_exit_handler
     }
     trap '_do_build_cleanup' EXIT
@@ -71,6 +72,10 @@ do_build() {
     # Create share point for downloads
     sudo install -d ${BUILDCHROOT_DIR}/git
 
+    # Create share point for apt
+    sudo install -d ${BUILDCHROOT_DIR}/apt
+    sudo mount --bind ${BASE_APT_DIR}/apt ${BUILDCHROOT_DIR}/apt
+
     # Configure root filesystem
     sudo chroot ${BUILDCHROOT_DIR} /configscript.sh
     _do_build_cleanup
@@ -79,6 +84,7 @@ do_build() {
 do_prepare[nostamp] = "1"
 
 do_prepare() {
+    sudo mount --bind ${BASE_APT_DIR} ${BUILDCHROOT_DIR}/apt
     sudo mount --bind ${GITDIR} ${BUILDCHROOT_DIR}/git
 }
 
@@ -89,6 +95,7 @@ do_cleanup[deptask] = "do_deploy_deb"
 do_cleanup[nostamp] = "1"
 
 do_cleanup() {
+    sudo umount ${BUILDCHROOT_DIR}/apt
     sudo umount ${BUILDCHROOT_DIR}/git
 }
 
