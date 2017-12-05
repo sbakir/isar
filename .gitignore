@@ -1,3 +1,6 @@
+*.orig
+*.rej
 *~
+/*.diff
 /*.patch
 __pycache__
