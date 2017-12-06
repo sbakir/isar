@@ -5,6 +5,19 @@ IMAGE_INSTALL ?= ""
 IMAGE_TYPE    ?= "ext4-img"
 IMAGE_ROOTFS   = "${WORKDIR}/rootfs"
 
+# Derive image dependencies and provide them to base-apt
+python __anonymous() {
+    pn = d.getVar('PN', True)
+    depsdir = d.getVar('BASE_APT_DIR', True) + '/deps'
+    packages = d.getVar('IMAGE_PREINSTALL', True)
+
+    if not os.path.exists(depsdir):
+        os.makedirs(depsdir, exist_ok=True)
+
+    with open(depsdir + '/' +  pn, 'w') as the_file:
+        the_file.write(packages)
+}
+
 def get_image_name(d, name_link):
     S = d.getVar("IMAGE_ROOTFS", True)
     path_link = os.path.join(S, name_link)

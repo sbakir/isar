@@ -13,37 +13,27 @@ SRC_URI = "file://distributions.in"
 
 WORKDIR = "${TMPDIR}/work/${DISTRO}-${DISTRO_ARCH}/${PN}"
 
-# NOTE: Should be obtaibed from buildchroot, image and packages recipes.
-BASE_PREINSTALL ?= "gcc \
-                    make \
-                    build-essential \
-                    debhelper \
-                    autotools-dev \
-                    dpkg \
-                    locales \
-                    docbook-to-man \
-                    apt \
-                    automake \
-                    dbus \
-                    localepurge \
-                    gdb \
-                    strace \
-                   "
-BASE_PREINSTALL += "${IMAGE_PREINSTALL}"
-
 BASE_APT_CONF_DIR = "${BASE_APT_DIR}/apt/conf"
 do_get_base_apt[dirs] = "${BASE_APT_CONF_DIR}"
 do_get_base_apt[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
 
 do_get_base_apt() {
-    PACKAGES=$(echo ${BASE_PREINSTALL} | xargs | sed 's/ /,/g')
+    for package in `ls ${WORKDIR}/deps`; do
+        DEPS=$(cat ${WORKDIR}/deps/$package | xargs)
+        PACKAGES="$PACKAGES $DEPS"
+    done
+
+    PACKAGES=$(echo ${PACKAGES} | sed 's/ /,/g')
+    if [ -n  "$PACKAGES" ]; then
+        PACKAGES="--include=$PACKAGES"
+    fi
 
     sudo debootstrap \
         --components=main,contrib,non-free,firmware \
         --no-check-gpg \
         --arch ${DISTRO_ARCH} \
         --download-only \
-        --include=$PACKAGES \
+        $PACKAGES \
         ${DISTRO_SUITE} \
         ${WORKDIR}/download \
         ${DISTRO_APT_SOURCE}
