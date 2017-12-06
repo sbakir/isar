@@ -100,3 +100,12 @@ do_cleanup() {
 }
 
 addtask cleanup after do_prepare
+
+# Share buildchroot extra packages with base-apt
+do_get_deps[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
+
+do_get_deps() {
+    echo ${BUILDCHROOT_PREINSTALL} > ${BASE_APT_DIR}/deps/${PN}
+}
+
+addtask get_deps after unpack before build

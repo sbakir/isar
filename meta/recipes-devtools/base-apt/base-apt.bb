@@ -16,6 +16,8 @@ WORKDIR = "${TMPDIR}/work/${DISTRO}-${DISTRO_ARCH}/${PN}"
 BASE_APT_CONF_DIR = "${BASE_APT_DIR}/apt/conf"
 do_get_base_apt[dirs] = "${BASE_APT_CONF_DIR}"
 do_get_base_apt[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
+DEPENDS = "buildchroot ${IMAGE_INSTALL}"
+do_get_base_apt[deptask] = "do_get_deps"
 
 do_get_base_apt() {
     for package in `ls ${WORKDIR}/deps`; do
