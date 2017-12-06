@@ -29,6 +29,7 @@ BASE_PREINSTALL ?= "gcc \
                     gdb \
                     strace \
                    "
+BASE_PREINSTALL += "${IMAGE_PREINSTALL}"
 
 BASE_APT_CONF_DIR = "${BASE_APT_DIR}/apt/conf"
 do_get_base_apt[dirs] = "${BASE_APT_CONF_DIR}"
