@@ -53,3 +53,16 @@ do_deploy_deb() {
 addtask deploy_deb after do_build
 do_deploy_deb[dirs] = "${DEPLOY_DIR_DEB}"
 do_deploy_deb[stamp-extra-info] = "${MACHINE}"
+
+do_get_deps[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
+
+# Derive dependencies from debian/control and provide them to base-apt
+do_get_deps() {
+    if [ -e ${S}/debian/control ]; then
+        DEPS=$(perl -ne 'next if /^#/; $p=(s/^Build-Depends:\s*/ / or (/^ / and $p)); s/,|\n|\([^)]+\)|\[[^]]+\]//mg; print if $p' < ${S}/debian/control)
+    fi
+
+    echo $DEPS > ${BASE_APT_DIR}/deps/${PN}
+}
+
+addtask get_deps after do_unpack before do_build
