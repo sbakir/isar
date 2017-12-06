@@ -31,6 +31,7 @@ WORKDIR = "${TMPDIR}/work/${DISTRO}-${DISTRO_ARCH}/${PN}"
 
 do_build[stamp-extra-info] = "${DISTRO}-${DISTRO_ARCH}"
 do_build[dirs] = "${WORKDIR}/hooks_multistrap"
+do_build[depends] = "base-apt:do_get_base_apt"
 
 do_build() {
     chmod +x "${WORKDIR}/setup.sh"
@@ -44,7 +45,7 @@ do_build() {
     # Adjust multistrap config
     sed -e 's|##BUILDCHROOT_PREINSTALL##|${BUILDCHROOT_PREINSTALL}|g' \
         -e 's|##DISTRO##|${DISTRO}|g' \
-        -e 's|##DISTRO_APT_SOURCE##|${DISTRO_APT_SOURCE}|g' \
+        -e 's|##DISTRO_APT_SOURCE##|copy:///${BASE_APT_DIR}/apt|g' \
         -e 's|##DISTRO_SUITE##|${DISTRO_SUITE}|g' \
         -e 's|##DISTRO_COMPONENTS##|${DISTRO_COMPONENTS}|g' \
         -e 's|##CONFIG_SCRIPT##|./'"$WORKDIR_REL"'/configscript.sh|g' \
